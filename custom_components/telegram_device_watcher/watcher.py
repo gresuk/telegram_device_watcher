@@ -1,7 +1,11 @@
 from homeassistant.const import EVENT_STATE_CHANGED
 from homeassistant.core import callback
 
-from .const import CONF_ENTITIES, STATE_OFFLINE
+from .const import (
+    CONF_ENTITIES,
+    CONF_NOTIFY_SERVICE,
+    STATE_OFFLINE,
+)
 
 
 class TelegramDeviceWatcher:
@@ -9,12 +13,14 @@ class TelegramDeviceWatcher:
         self.hass = hass
         self.entry = entry
 
-        # 🔒 SAFE GET — щоб не падало
         self.entities = set(entry.data.get(CONF_ENTITIES, []))
+        self.notify_service = entry.options.get(
+            CONF_NOTIFY_SERVICE,
+            "notify.telegram",
+        )
 
         self._offline = set()
         self._unsub = None
-
 
     async def async_start(self):
         self._unsub = self.hass.bus.async_listen(
@@ -41,31 +47,34 @@ class TelegramDeviceWatcher:
         state = new_state.state
         name = new_state.name or entity_id
 
-        # Якщо пристрій знову online — скидаємо debounce
+        # Повернувся online — скидаємо debounce
         if state not in STATE_OFFLINE:
             self._offline.discard(entity_id)
             return
 
-        # Debounce — вже повідомляли
+        # Debounce
         if entity_id in self._offline:
             return
 
         self._offline.add(entity_id)
 
         self.hass.async_create_task(
-            self._send_telegram(name, entity_id)
+            self._send_notify(name, entity_id)
         )
 
-    async def _send_telegram(self, name, entity_id):
+    async def _send_notify(self, name, entity_id):
+        domain, service = self.notify_service.split(".", 1)
+
+        message = (
+            "⚠️ Пристрій недоступний!\n\n"
+            f"• Назва: {name}\n"
+            f"• Entity: {entity_id}"
+        )
+
         await self.hass.services.async_call(
-            "telegram_bot",
-            "send_message",
+            domain,
+            service,
             {
-                "message": (
-                    "⚠️ *Пристрій недоступний!*\n\n"
-                    f"• *Назва:* {name}\n"
-                    f"• *Entity:* `{entity_id}`"
-                ),
-                "parse_mode": "markdown",
+                "message": message,
             },
         )
