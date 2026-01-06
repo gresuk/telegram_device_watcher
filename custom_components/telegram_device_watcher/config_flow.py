@@ -18,6 +18,15 @@ ALLOWED_DOMAINS = {
 }
 
 
+def is_real_device(entity_id: str) -> bool:
+    return not entity_id.startswith((
+        "sensor.home_assistant_",
+        "sensor.supervisor_",
+        "sensor.system_",
+        "update.",
+    ))
+
+
 class TelegramDeviceWatcherConfigFlow(
     config_entries.ConfigFlow,
     domain=DOMAIN
@@ -25,7 +34,7 @@ class TelegramDeviceWatcherConfigFlow(
     VERSION = 1
 
     async def async_step_user(self, user_input=None):
-        if user_input is not None:
+        if user_input:
             return self.async_create_entry(
                 title="Telegram Device Watcher",
                 data={
@@ -39,25 +48,23 @@ class TelegramDeviceWatcherConfigFlow(
         entity_reg = er.async_get(self.hass)
 
         entities = {
-            e.entity_id: (
-                f"{e.entity_id}"
-                + (f" ({e.original_name})" if e.original_name else "")
-            )
+            e.entity_id: e.entity_id
             for e in entity_reg.entities.values()
-            if e.entity_id.split(".")[0] in ALLOWED_DOMAINS
+            if (
+                e.entity_id.split(".")[0] in ALLOWED_DOMAINS
+                and is_real_device(e.entity_id)
+            )
         }
 
         return self.async_show_form(
             step_id="user",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(CONF_ENTITIES): cv.multi_select(entities),
-                    vol.Required(
-                        CONF_NOTIFY_SERVICE,
-                        default="notify.telegram",
-                    ): str,
-                }
-            ),
+            data_schema=vol.Schema({
+                vol.Required(CONF_ENTITIES): cv.multi_select(entities),
+                vol.Required(
+                    CONF_NOTIFY_SERVICE,
+                    default="notify.telegram",
+                ): str,
+            }),
         )
 
     @staticmethod
@@ -68,41 +75,36 @@ class TelegramDeviceWatcherConfigFlow(
 
 class TelegramDeviceWatcherOptionsFlow(config_entries.OptionsFlow):
     def __init__(self, config_entry):
-        self.config_entry = config_entry
+        self._config_entry = config_entry
 
     async def async_step_init(self, user_input=None):
-        if user_input is not None:
-            return self.async_create_entry(
-                title="",
-                data=user_input,
-            )
+        if user_input:
+            return self.async_create_entry(title="", data=user_input)
 
         entity_reg = er.async_get(self.hass)
 
         entities = {
-            e.entity_id: (
-                f"{e.entity_id}"
-                + (f" ({e.original_name})" if e.original_name else "")
-            )
+            e.entity_id: e.entity_id
             for e in entity_reg.entities.values()
-            if e.entity_id.split(".")[0] in ALLOWED_DOMAINS
+            if (
+                e.entity_id.split(".")[0] in ALLOWED_DOMAINS
+                and is_real_device(e.entity_id)
+            )
         }
 
         return self.async_show_form(
             step_id="init",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(
-                        CONF_ENTITIES,
-                        default=self.config_entry.data.get(CONF_ENTITIES, []),
-                    ): cv.multi_select(entities),
-                    vol.Required(
+            data_schema=vol.Schema({
+                vol.Required(
+                    CONF_ENTITIES,
+                    default=self._config_entry.data.get(CONF_ENTITIES, []),
+                ): cv.multi_select(entities),
+                vol.Required(
+                    CONF_NOTIFY_SERVICE,
+                    default=self._config_entry.options.get(
                         CONF_NOTIFY_SERVICE,
-                        default=self.config_entry.options.get(
-                            CONF_NOTIFY_SERVICE,
-                            "notify.telegram",
-                        ),
-                    ): str,
-                }
-            ),
+                        "notify.telegram",
+                    ),
+                ): str,
+            }),
         )
