@@ -1,0 +1,14 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Telegram Device Watcher",
+        "description": "Виберіть пристрої та notify сервіс",
+        "data": {
+          "entities": "Пристрої для моніторингу",
+          "notify_service": "Notify сервіс"
+        }
+      }
+    }
+  }
+}
