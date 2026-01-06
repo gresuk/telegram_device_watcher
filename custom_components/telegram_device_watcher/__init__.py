@@ -3,7 +3,6 @@ from .watcher import TelegramDeviceWatcher
 
 
 async def async_setup(hass, config):
-    # Обовʼязковий handler, без нього HA падає з Invalid handler specified
     return True
 
 
@@ -13,7 +12,6 @@ async def async_setup_entry(hass, entry):
 
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = watcher
-
     return True
 
 
