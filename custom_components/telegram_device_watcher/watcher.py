@@ -1,6 +1,5 @@
 from homeassistant.const import EVENT_STATE_CHANGED
 from homeassistant.core import callback
-from homeassistant.helpers.event import async_track_event
 
 from .const import CONF_ENTITIES, STATE_OFFLINE
 
@@ -14,8 +13,7 @@ class TelegramDeviceWatcher:
         self._unsub = None
 
     async def async_start(self):
-        self._unsub = async_track_event(
-            self.hass,
+        self._unsub = self.hass.bus.async_listen(
             EVENT_STATE_CHANGED,
             self._state_listener,
         )
@@ -30,16 +28,21 @@ class TelegramDeviceWatcher:
         entity_id = event.data.get("entity_id")
         new_state = event.data.get("new_state")
 
-        if entity_id not in self.entities or not new_state:
+        if not entity_id or entity_id not in self.entities:
+            return
+
+        if not new_state:
             return
 
         state = new_state.state
         name = new_state.name or entity_id
 
+        # якщо пристрій знову online — знімаємо debounce
         if state not in STATE_OFFLINE:
             self._offline.discard(entity_id)
             return
 
+        # debounce — вже повідомляли
         if entity_id in self._offline:
             return
 
@@ -56,10 +59,4 @@ class TelegramDeviceWatcher:
             {
                 "message": (
                     "⚠️ *Пристрій недоступний!*\n\n"
-                    f"• *Назва:* {name}\n"
-                    f"• *Entity:* `{entity_id}`"
-                ),
-                "parse_mode": "markdown",
-            },
-        )
-
+                    f"
