@@ -1,0 +1,6 @@
+{
+  "name": "Telegram Device Watcher",
+  "content_in_root": false,
+  "domain": "telegram_device_watcher",
+  "render_readme": true
+}
