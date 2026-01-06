@@ -37,12 +37,12 @@ class TelegramDeviceWatcher:
         state = new_state.state
         name = new_state.name or entity_id
 
-        # якщо пристрій знову online — знімаємо debounce
+        # Якщо пристрій знову online — скидаємо debounce
         if state not in STATE_OFFLINE:
             self._offline.discard(entity_id)
             return
 
-        # debounce — вже повідомляли
+        # Debounce — вже повідомляли
         if entity_id in self._offline:
             return
 
@@ -59,4 +59,9 @@ class TelegramDeviceWatcher:
             {
                 "message": (
                     "⚠️ *Пристрій недоступний!*\n\n"
-                    f"
+                    f"• *Назва:* {name}\n"
+                    f"• *Entity:* `{entity_id}`"
+                ),
+                "parse_mode": "markdown",
+            },
+        )
