@@ -8,9 +8,13 @@ class TelegramDeviceWatcher:
     def __init__(self, hass, entry):
         self.hass = hass
         self.entry = entry
-        self.entities = set(entry.data[CONF_ENTITIES])
+
+        # 🔒 SAFE GET — щоб не падало
+        self.entities = set(entry.data.get(CONF_ENTITIES, []))
+
         self._offline = set()
         self._unsub = None
+
 
     async def async_start(self):
         self._unsub = self.hass.bus.async_listen(
